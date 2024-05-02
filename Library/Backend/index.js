@@ -173,7 +173,6 @@ const resolvers = {
 
       } catch (error) {
         if (error.name === 'ValidationError') {
-          console.log("toimiiks?");
           throw new GraphQLError(error, {
             extensions: {
               code: 'BAD_USER_INPUT',
