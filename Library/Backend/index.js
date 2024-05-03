@@ -38,6 +38,11 @@ const typeDefs = `
     id: ID!
   }
 
+  type userFavouriteGenreBooks {
+    genre: String!
+    books: [Book!]!
+  }
+
   type Token {
     value: String!
   }
@@ -72,6 +77,7 @@ const typeDefs = `
     authorCount: Int
     allBooks(author: String, genre: String): [Book!]!
     allAuthors: [Author!]!
+    userFavouriteGenre: userFavouriteGenreBooks!
   }
 `
 
@@ -102,8 +108,16 @@ const resolvers = {
     allAuthors: async () => {
       const authors = await Author.find({})
       return authors
-    }
+    },
 
+    userFavouriteGenre: async (_, args, context) => {
+      try {
+        const books = await Book.find({ genres: {$in: [context.currentUser.favouriteGenre.toLowerCase()]}}).populate('author')
+        return { genre: context.currentUser.favouriteGenre, books: books }
+      } catch (error) {
+        throw new GraphQLError(error)
+      }
+    }
   },
   Author: {
     bookCount: async (root) => {
@@ -207,6 +221,7 @@ const resolvers = {
 
     login: async (_, args) => {
       try {
+        
         const user = await User.findOne({ username: args.username })
         if (!user || args.password !== 'pass') {
           const error = new Error('wrong credentials')
@@ -219,7 +234,7 @@ const resolvers = {
           id: user._id
         }
 
-        return { value: jwt.sign(userToken, process.env.SECRET)}
+        return { value: jwt.sign(userToken, process.env.SECRET) }
 
       } catch (error) {
         throw new GraphQLError(error)
