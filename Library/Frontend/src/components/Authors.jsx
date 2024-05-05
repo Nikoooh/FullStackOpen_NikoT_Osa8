@@ -15,10 +15,10 @@ const Authors = ({ show, authors, updateAuthor }) => {
   return (
     <div>
       <h2>authors</h2>
-      <table>
+      <table style={{textAlign: 'left'}}>
         <tbody>
           <tr>
-            <th></th>
+            <th>name</th>
             <th>born</th>
             <th>books</th>
           </tr>

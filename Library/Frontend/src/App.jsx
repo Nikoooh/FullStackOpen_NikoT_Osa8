@@ -4,12 +4,16 @@ import Books from "./components/Books";
 import NewBook from "./components/NewBook";
 import Login from "./components/Login";
 import Recommended from "./components/Recommended";
-import { useMutation, useQuery } from "@apollo/client";
-import { ALL_AUTHORS, ALL_BOOKS, CREATE_BOOK, UPDATE_AUTHOR, LOGIN, USER_FAVOURITE_GENRE } from "./utils/queries";
+import Notification from "./components/Notification"
+import { useMutation, useQuery, useSubscription, useApolloClient } from "@apollo/client";
+import { ALL_AUTHORS, ALL_BOOKS, CREATE_BOOK, UPDATE_AUTHOR, LOGIN, USER_FAVOURITE_GENRE, BOOK_ADDED } from "./utils/queries";
+import { updateBookCache } from "./utils/functions";
 
 const App = () => {
+  const [notification, setNotification] = useState({show: false, notification: {}})
   const [token, setToken] = useState(null)
   const [page, setPage] = useState("authors");
+  const client = useApolloClient()
   const [ createBook ] = useMutation(CREATE_BOOK, {
     refetchQueries: [{ query: ALL_AUTHORS }, { query: ALL_BOOKS }]
   })
@@ -31,12 +35,23 @@ const App = () => {
   const handleLogout = () => {
     setToken(null)
     localStorage.clear()
-    if (page === 'add') setPage('authors')
+    if (page === 'add' || page === 'recommended') setPage('authors')
   }
 
   const authors = useQuery(ALL_AUTHORS)
   const books = useQuery(ALL_BOOKS)
   const userFavouriteGenre = useQuery(USER_FAVOURITE_GENRE)
+
+  useSubscription(BOOK_ADDED, {
+    onData: ({ data }) => {
+      const bookAdded = data.data.bookAdded
+      setNotification({show: true, notification: data})
+      updateBookCache(client.cache, { query: ALL_BOOKS }, bookAdded)
+      setTimeout(() => {
+        setNotification({show: false, notification: {}})
+      }, 5000);
+    },
+  })
 
   useEffect(() => {
     if (result.data) {
@@ -66,15 +81,20 @@ const App = () => {
       </div>
 
       {(authors.loading) ?
-        <></>
+        <>loading...</>
       :
-        <Authors show={page === 'authors'} authors={authors} updateAuthor={updateAuthor} />
+        (authors.data.allAuthors) ?
+          <Authors show={page === 'authors'} authors={authors} updateAuthor={updateAuthor} />
+        :
+          <></>
       }  
       
       <Books show={page === 'books'} books={books} />    
       <NewBook show={page === 'add'} createBook={createBook} token={token}/>
       <Recommended show={page === 'recommended'} favouriteGenre={userFavouriteGenre} />
       <Login show={page === 'login'} login={login} />
+
+      <Notification notification={notification}/>
     </div>
   );
 };
